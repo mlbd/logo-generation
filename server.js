@@ -41,16 +41,22 @@ async function createFTPClient() {
     return client
 }
 
-// Clear uploads folder before new batch
+// Clear uploads folder - delete all files and subdirectories
 async function clearUploadsFolder(client) {
     try {
         await client.ensureDir(FTP_PATH)
-        const files = await client.list(FTP_PATH)
+        const items = await client.list(FTP_PATH)
 
-        for (const file of files) {
-            if (file.type === 1) { // Regular file
-                await client.remove(`${FTP_PATH}/${file.name}`)
-                console.log(`Deleted: ${file.name}`)
+        for (const item of items) {
+            const itemPath = `${FTP_PATH}/${item.name}`
+
+            if (item.type === 2) { // Directory
+                // Recursively delete directory and its contents
+                await client.removeDir(itemPath)
+                console.log(`Deleted folder: ${item.name}`)
+            } else if (item.type === 1) { // Regular file
+                await client.remove(itemPath)
+                console.log(`Deleted file: ${item.name}`)
             }
         }
         console.log('Uploads folder cleared successfully')
@@ -111,6 +117,21 @@ app.post('/api/upload', upload.array('images', 20), async (req, res) => {
             success: false,
             error: error.message
         })
+    } finally {
+        client.close()
+    }
+})
+
+// Clear uploads folder endpoint
+app.delete('/api/clear', async (req, res) => {
+    const client = await createFTPClient()
+
+    try {
+        await clearUploadsFolder(client)
+        res.json({ success: true, message: 'Uploads folder cleared' })
+    } catch (error) {
+        console.error('Clear Error:', error)
+        res.status(500).json({ success: false, error: error.message })
     } finally {
         client.close()
     }

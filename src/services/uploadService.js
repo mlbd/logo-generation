@@ -50,3 +50,24 @@ export async function uploadMultipleToFTP(files, onProgress) {
         throw error
     }
 }
+
+// Clear uploads folder on FTP server
+export async function clearUploadsFolder() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/clear`, {
+            method: 'DELETE'
+        })
+
+        if (!response.ok) {
+            console.error('Failed to clear uploads folder')
+            return false
+        }
+
+        const data = await response.json()
+        console.log('Uploads folder cleared:', data.message)
+        return data.success
+    } catch (error) {
+        console.error('Error clearing uploads folder:', error)
+        return false
+    }
+}

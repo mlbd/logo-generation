@@ -1,11 +1,13 @@
 import React, { useCallback, useState, useRef } from 'react'
-import { Upload, Image, X } from 'lucide-react'
+import { Upload, Image, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function ImageDropzone({ onFilesSelected, isUploading }) {
+export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
     const [isDragging, setIsDragging] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState([])
     const inputRef = useRef(null)
+
+    const isDisabled = isUploading || isClearing
 
     const handleDragOver = useCallback((e) => {
         e.preventDefault()
@@ -75,7 +77,7 @@ export function ImageDropzone({ onFilesSelected, isUploading }) {
                     isDragging
                         ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 scale-[1.02] animate-pulse-glow"
                         : "border-[var(--color-border)] bg-[var(--color-card)]/30",
-                    isUploading && "pointer-events-none opacity-60"
+                    isDisabled && "pointer-events-none opacity-60"
                 )}
             >
                 <input
@@ -87,20 +89,26 @@ export function ImageDropzone({ onFilesSelected, isUploading }) {
                     className="hidden"
                 />
 
-                <div className={cn(
-                    "p-5 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-accent)]/20",
-                    "transition-transform duration-300",
-                    isDragging && "scale-110"
-                )}>
-                    <Upload className="w-10 h-10 text-[var(--color-primary)]" />
-                </div>
+                {isClearing ? (
+                    <div className="p-5 rounded-full bg-gradient-to-br from-[var(--color-destructive)]/20 to-[var(--color-accent)]/20">
+                        <Loader2 className="w-10 h-10 text-[var(--color-destructive)] animate-spin" />
+                    </div>
+                ) : (
+                    <div className={cn(
+                        "p-5 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-accent)]/20",
+                        "transition-transform duration-300",
+                        isDragging && "scale-110"
+                    )}>
+                        <Upload className="w-10 h-10 text-[var(--color-primary)]" />
+                    </div>
+                )}
 
                 <div className="text-center space-y-2">
                     <p className="text-lg font-medium text-[var(--color-foreground)]">
-                        Drop your images here
+                        {isClearing ? 'Preparing server...' : 'Drop your images here'}
                     </p>
                     <p className="text-sm text-[var(--color-muted-foreground)]">
-                        or click to browse from your computer
+                        {isClearing ? 'Clearing previous uploads, please wait' : 'or click to browse from your computer'}
                     </p>
                 </div>
 
@@ -119,7 +127,7 @@ export function ImageDropzone({ onFilesSelected, isUploading }) {
                         </p>
                         <button
                             onClick={handleUpload}
-                            disabled={isUploading}
+                            disabled={isDisabled}
                             className={cn(
                                 "px-6 py-2.5 cursor-pointer rounded-xl font-medium text-sm transition-all duration-200",
                                 "bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)]",
@@ -127,7 +135,7 @@ export function ImageDropzone({ onFilesSelected, isUploading }) {
                                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             )}
                         >
-                            {isUploading ? 'Uploading...' : 'Generate Logos'}
+                            {isUploading ? 'Uploading...' : isClearing ? 'Please wait...' : 'Generate Logos'}
                         </button>
                     </div>
 

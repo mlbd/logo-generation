@@ -1,16 +1,35 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { ImageDropzone } from '@/components/ImageDropzone'
 import { LogoResultRow } from '@/components/LogoResultRow'
 import { Progress } from '@/components/ui/progress'
-import { uploadMultipleToFTP } from '@/services/uploadService'
+import { uploadMultipleToFTP, clearUploadsFolder } from '@/services/uploadService'
 import { generateAllLogoVersions } from '@/services/logoService'
 import { Code2, Zap, RotateCcw } from 'lucide-react'
 
 function App() {
     const [isUploading, setIsUploading] = useState(false)
+    const [isClearing, setIsClearing] = useState(false)
     const [uploadProgress, setUploadProgress] = useState(0)
     const [results, setResults] = useState([])
     const [processingFiles, setProcessingFiles] = useState([])
+
+    // Clear FTP uploads folder on page load
+    useEffect(() => {
+        const clearOnLoad = async () => {
+            setIsClearing(true)
+            await clearUploadsFolder()
+            setIsClearing(false)
+        }
+        clearOnLoad()
+    }, [])
+
+    // Handle reset - clear both state and FTP folder
+    const handleReset = useCallback(async () => {
+        setProcessingFiles([])
+        setIsClearing(true)
+        await clearUploadsFolder()
+        setIsClearing(false)
+    }, [])
 
     const handleFilesSelected = useCallback(async (files) => {
         setIsUploading(true)
@@ -91,6 +110,7 @@ function App() {
                         <ImageDropzone
                             onFilesSelected={handleFilesSelected}
                             isUploading={isUploading}
+                            isClearing={isClearing}
                         />
 
                         {/* Upload Progress */}
@@ -117,7 +137,7 @@ function App() {
                                         {processingFiles.filter(f => !f.isLoading).length} / {processingFiles.length} completed
                                     </span>
                                     <button
-                                        onClick={() => setProcessingFiles([])}
+                                        onClick={handleReset}
                                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-destructive)]/10 hover:bg-[var(--color-destructive)]/20 text-[var(--color-destructive)] text-sm font-medium transition-colors cursor-pointer"
                                     >
                                         <RotateCcw className="w-4 h-4" />
