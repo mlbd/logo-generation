@@ -36,13 +36,38 @@ function App() {
         setUploadProgress(0)
 
         try {
-            // Step 1: Upload all files to FTP
-            const uploadResults = await uploadMultipleToFTP(files, (progress) => {
-                setUploadProgress(progress)
-            })
+            // Separate files that need FTP upload vs. direct URLs
+            const urlFiles = files.filter(f => f.sourceUrl)
+            const regularFiles = files.filter(f => !f.sourceUrl)
+
+            let processingItems = []
+
+            // 1. Handle URL files (Direct pass-through)
+            const urlResults = urlFiles.map(file => ({
+                originalName: file.name,
+                filename: file.name,
+                url: file.sourceUrl,
+                size: file.size
+            }))
+
+            // 2. Handle Regular Files (FTP Upload)
+            let ftpResults = []
+            if (regularFiles.length > 0) {
+                ftpResults = await uploadMultipleToFTP(regularFiles, (progress) => {
+                    setUploadProgress(progress)
+                })
+            }
+
+            // Combine results
+            const allResults = [...urlResults, ...ftpResults]
+
+            if (allResults.length === 0) {
+                setIsUploading(false)
+                return
+            }
 
             // Add files to processing state with loading status
-            const processingItems = uploadResults.map(item => ({
+            processingItems = allResults.map(item => ({
                 filename: item.filename,
                 isLoading: true,
                 logoVersions: null,
@@ -53,7 +78,7 @@ function App() {
             setIsUploading(false)
 
             // Step 2: Send all requests to n8n in parallel
-            await generateAllLogoVersions(uploadResults, (result) => {
+            await generateAllLogoVersions(allResults, (result) => {
                 // Update the specific item when its result comes back
                 setProcessingFiles(prev => {
                     const updated = prev.map(item => {

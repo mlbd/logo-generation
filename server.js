@@ -142,6 +142,40 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', ftp_host: process.env.FTP_HOST })
 })
 
+// Proxy image endpoint to bypass CORS
+app.get('/api/proxy-image', async (req, res) => {
+    const { url } = req.query;
+
+    if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+    }
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.startsWith('image/')) {
+            return res.status(400).json({ error: 'URL is not an image' });
+        }
+
+        // Forward content type
+        res.setHeader('Content-Type', contentType);
+
+        // Pipe the image stream directly to response
+        // Using arrayBuffer() since we're using native fetch now
+        const arrayBuffer = await response.arrayBuffer();
+        res.send(Buffer.from(arrayBuffer));
+
+    } catch (error) {
+        console.error('Proxy Error:', error);
+        res.status(500).json({ error: 'Failed to fetch image' });
+    }
+});
+
 // Serve static files in production (must be after API routes)
 const distPath = path.resolve('dist')
 app.use(express.static(distPath))
