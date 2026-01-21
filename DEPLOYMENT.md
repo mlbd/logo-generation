@@ -2,89 +2,58 @@
 
 This guide walks you through deploying the Smart Logo Generator from GitHub to Coolify.
 
+## Why this setup works
+The application is configured to run as a **single resource**:
+- **One Server**: Your Express backend handles API requests (`/api/...`) AND serves the React frontend.
+- **Auto-Config**: The frontend automatically connects to the backend in production—no manual code changes needed.
+
 ## Prerequisites
 
 - Coolify instance running (self-hosted or cloud)
-- GitHub repository: `https://github.com/mlbd/logo-generation.git`
+- GitHub repository connected
 - FTP server credentials
 
 ---
 
-## Step 1: Access Coolify Dashboard
+## Step 1: Create a New Project
 
-1. Open your Coolify dashboard (e.g., `https://your-coolify-domain.com`)
-2. Login with your admin credentials
-
----
-
-## Step 2: Create a New Project
-
-1. Click **"Projects"** in the sidebar
-2. Click **"+ New Project"** or **"Add New"**
-3. Enter project name: `logo-generation`
-4. Click **"Create"**
+1. Open Coolify Dashboard
+2. Click **"+ New Project"**
+3. Name it: `logo-generation` or similar
+4. Click **"New Resource"** > **"Application"**
+5. Select **"GitHub"** as source
 
 ---
 
-## Step 3: Add a New Resource
+## Step 2: Configure Repository
 
-1. Inside your project, click **"+ New Resource"** or **"Add Resource"**
-2. Select **"Application"**
-3. Choose **"GitHub"** as the source
-
----
-
-## Step 4: Connect GitHub Repository
-
-1. If not already connected, authorize Coolify to access your GitHub
-2. Select repository: `mlbd/logo-generation`
-3. Select branch: `main`
-4. Click **"Continue"**
+1. Select your repository: `mlbd/logo-generation`
+2. Branch: `main`
+3. Click **"Continue"**
 
 ---
 
-## Step 5: Configure Build Settings
+## Step 3: Build Settings (Important!)
 
-Since this app has both a Vite frontend and Express backend, you have two options:
-
-### Option A: Deploy as Nixpacks (Recommended)
-
-Coolify will auto-detect Node.js. Configure:
+Coolify will detect it as a Node.js app. Verify these settings:
 
 | Setting | Value |
 |---------|-------|
-| Build Pack | Nixpacks |
-| Base Directory | `/` |
-| Build Command | `npm install && npm run build` |
-| Start Command | `node server.js` |
-| Publish Directory | `dist` |
+| **Build Pack** | Nixpacks (default) |
+| **Base Directory** | `/` |
+| **Build Command** | `npm install && npm run build` |
+| **Start Command** | `node server.js` |
+| **Publish Directory** | `.` |
 
-### Option B: Deploy with Dockerfile
-
-Create a `Dockerfile` in your repo:
-
-```dockerfile
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-RUN npm run build
-
-EXPOSE 3001
-
-CMD ["node", "server.js"]
-```
+> **Explanation**: 
+> - `npm run build` compiles the React app into the `dist/` folder.
+> - `node server.js` starts the backend, which serves both the API and that `dist/` folder.
 
 ---
 
-## Step 6: Configure Environment Variables
+## Step 4: Environment Variables
 
-1. Go to **"Environment Variables"** tab
-2. Add the following variables:
+Click the **"Environment Variables"** tab and add these secrets:
 
 | Variable | Value |
 |----------|-------|
@@ -94,100 +63,19 @@ CMD ["node", "server.js"]
 | `FTP_PATH` | `/uploads` |
 | `FTP_BASE_URL` | `https://lukpaluk.xyz/smart-logo-versions/uploads` |
 
-> ⚠️ **Important**: Never commit `.env` to GitHub. Add variables directly in Coolify.
+---
+
+## Step 5: Port & Domain
+
+1. Go to **"Settings"** or **"Network"**
+2. **Exposed Port**: `3001` (This is where your Express server runs)
+3. **Domain**: Set your desired domain (e.g., `https://logos.yourdomain.com`)
 
 ---
 
-## Step 7: Configure Port & Domain
+## Step 6: Deploy
 
-1. In **"Settings"** or **"Network"** tab:
-   - Set **Exposed Port**: `3001`
-   - Set **Domain**: `logo-gen.yourdomain.com` (or your preferred subdomain)
+1. Click **"Deploy"**
+2. Wait for the build logs to finish
 
-2. Enable **HTTPS** if using your own domain
-
----
-
-## Step 8: Update Frontend API URL
-
-Before deploying, update `src/services/uploadService.js`:
-
-```javascript
-// Change from localhost to your deployed server URL
-const API_BASE_URL = 'https://logo-gen.yourdomain.com'
-```
-
-Commit and push this change:
-
-```bash
-git add .
-git commit -m "Update API URL for production"
-git push origin main
-```
-
----
-
-## Step 9: Deploy
-
-1. Click **"Deploy"** button in Coolify
-2. Wait for the build to complete (2-5 minutes)
-3. Check the **Logs** tab for any errors
-
----
-
-## Step 10: Verify Deployment
-
-1. Visit your domain: `https://logo-gen.yourdomain.com`
-2. Test image upload functionality
-3. Verify FTP connection works
-
----
-
-## Troubleshooting
-
-### Build Fails
-- Check Coolify build logs
-- Ensure all dependencies are in `package.json`
-- Verify Node.js version compatibility
-
-### FTP Connection Errors
-- Verify FTP credentials in environment variables
-- Check if FTP server allows connections from Coolify's IP
-- Ensure `basic-ftp` package is installed
-
-### CORS Issues
-- Update `server.js` to include your production domain in CORS origins:
-
-```javascript
-app.use(cors({
-  origin: ['http://localhost:5173', 'https://logo-gen.yourdomain.com'],
-  methods: ['GET', 'POST', 'DELETE']
-}))
-```
-
----
-
-## Alternative: Separate Frontend & Backend
-
-For better scalability, you can deploy:
-
-1. **Frontend (Vite)** → Vercel/Netlify (free static hosting)
-2. **Backend (Express)** → Coolify
-
-This separates concerns and allows independent scaling.
-
----
-
-## Quick Reference
-
-| What | Where |
-|------|-------|
-| GitHub Repo | https://github.com/mlbd/logo-generation.git |
-| Frontend Port | 5173 (dev) |
-| Backend Port | 3001 |
-| Build Command | `npm run build` |
-| Start Command | `node server.js` |
-
----
-
-**Your app is now deployed! 🚀**
+**That's it!** You do NOT need to deploy the frontend separately. The single `node server.js` process handles everything.

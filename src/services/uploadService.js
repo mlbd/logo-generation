@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3001'
+const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001'
 
 export async function uploadToFTP(files) {
     const formData = new FormData()

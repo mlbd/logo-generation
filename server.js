@@ -142,6 +142,15 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', ftp_host: process.env.FTP_HOST })
 })
 
+// Serve static files in production (must be after API routes)
+const distPath = path.resolve('dist')
+app.use(express.static(distPath))
+
+// Handle SPA routing - send index.html for all other routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'))
+})
+
 app.listen(PORT, () => {
     console.log(`🚀 FTP Upload Server running on http://localhost:${PORT}`)
     console.log(`📁 FTP Host: ${process.env.FTP_HOST}`)
