@@ -147,7 +147,7 @@ const distPath = path.resolve('dist')
 app.use(express.static(distPath))
 
 // Handle SPA routing - send index.html for all other routes
-app.get('*', (req, res) => {
+app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'))
 })
 
