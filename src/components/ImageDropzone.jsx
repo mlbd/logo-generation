@@ -385,7 +385,7 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing, upload
                             </div>
                         ) : (
                             <>
-                                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 content-start">
+                                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 auto-rows-max content-start">
                                     {savedLogos.map((logo) => {
                                         const isSelected = selectedSavedLogos.some(l => l.name === logo.name)
                                         return (
