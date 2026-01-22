@@ -125,6 +125,7 @@ function App() {
 
                         <p className="text-lg text-[var(--color-muted-foreground)] mt-5">
                             Upload your images and instantly generate 4 unique logo variations. <br />
+                            <span className="text-sm opacity-75">(Original, Original White, B&W Black, B&W White)</span> <br />
                             Powered by Python & Automation technology.
                         </p>
                     </header>
@@ -136,6 +137,7 @@ function App() {
                             onFilesSelected={handleFilesSelected}
                             isUploading={isUploading}
                             isClearing={isClearing}
+                            uploadProgress={uploadProgress}
                         />
 
                         {/* Upload Progress */}

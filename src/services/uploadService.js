@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001'
 
-export async function uploadToFTP(files) {
+export async function uploadToFTP(files, onProgress) {
     const formData = new FormData()
 
     // Append all files to FormData
@@ -8,43 +8,58 @@ export async function uploadToFTP(files) {
         formData.append('images', file)
     }
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/upload`, {
-            method: 'POST',
-            body: formData
-        })
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', `${API_BASE_URL}/api/upload`)
 
-        if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Upload failed')
+        // Track upload progress
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && onProgress) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100)
+                // Normalize slightly to usually max out at 95% until response comes back
+                const displayPercent = Math.min(95, percentComplete)
+                onProgress(displayPercent)
+            }
         }
 
-        const data = await response.json()
-
-        if (!data.success) {
-            throw new Error(data.error || 'Upload failed')
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText)
+                    if (data.success) {
+                        const results = data.files.map(file => ({
+                            success: true,
+                            url: file.url,
+                            filename: file.originalName
+                        }))
+                        if (onProgress) onProgress(100)
+                        resolve(results)
+                    } else {
+                        reject(new Error(data.error || 'Upload failed'))
+                    }
+                } catch (e) {
+                    reject(new Error('Invalid response from server'))
+                }
+            } else {
+                reject(new Error(xhr.statusText || 'Upload failed'))
+            }
         }
 
-        return data.files.map(file => ({
-            success: true,
-            url: file.url,
-            filename: file.originalName
-        }))
+        xhr.onerror = () => reject(new Error('Network error during upload'))
 
-    } catch (error) {
-        console.error('Upload error:', error)
-        throw error
-    }
+        xhr.send(formData)
+    })
 }
 
 export async function uploadMultipleToFTP(files, onProgress) {
     // Upload all files at once to the backend
     // The backend will clear the folder and upload all files
-    if (onProgress) onProgress(10)
+    // Initial obscure progress
+    if (onProgress) onProgress(1)
 
     try {
-        const results = await uploadToFTP(files)
-        if (onProgress) onProgress(100)
+        // Pass onProgress to track real XHR progress
+        const results = await uploadToFTP(files, onProgress)
         return results
     } catch (error) {
         throw error

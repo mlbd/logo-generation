@@ -1,8 +1,8 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react'
-import { Upload, Image, X, Loader2, Link as LinkIcon, Plus, Grid, Check } from 'lucide-react'
+import { Upload, Image, X, Loader2, Link as LinkIcon, Plus, Grid, Check, Trash2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
+export function ImageDropzone({ onFilesSelected, isUploading, isClearing, uploadProgress }) {
     const [isDragging, setIsDragging] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState([])
     const [activeTab, setActiveTab] = useState('upload')
@@ -11,6 +11,8 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
     const [savedLogos, setSavedLogos] = useState([])
     const [isLoadingSaved, setIsLoadingSaved] = useState(false)
     const [selectedSavedLogos, setSelectedSavedLogos] = useState([])
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const inputRef = useRef(null)
 
     const isDisabled = isUploading || isClearing || isImporting
@@ -54,8 +56,13 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
 
         for (const logo of selectedSavedLogos) {
             try {
-                // Fetch the image to create a file object (needed for preview & consistency)
-                const response = await fetch(logo.url)
+                // Use proxy to fetch image to avoid CORS issues
+                const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
+                const proxyUrl = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(logo.url)}`
+
+                const response = await fetch(proxyUrl)
+                if (!response.ok) throw new Error('Failed to fetch image via proxy')
+
                 const blob = await response.blob()
                 const file = new File([blob], logo.name, { type: blob.type })
 
@@ -73,6 +80,48 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
         setSelectedFiles(prev => [...prev, ...newFiles])
         setSelectedSavedLogos([])
         setActiveTab('upload')
+    }
+
+    const handleDeleteClick = () => {
+        if (selectedSavedLogos.length > 0) {
+            setShowDeleteConfirm(true)
+        }
+    }
+
+    const confirmDelete = async () => {
+        if (selectedSavedLogos.length === 0) return
+
+        setIsDeleting(true)
+        try {
+            const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
+            const response = await fetch(`${API_BASE}/api/saved-logos`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filenames: selectedSavedLogos.map(l => l.name)
+                })
+            })
+
+            const data = await response.json()
+            if (!data.success) throw new Error(data.error || 'Failed to delete files')
+
+            // Remove deleted files from local state
+            const deletedNames = data.results
+                .filter(r => r.status === 'deleted')
+                .map(r => r.name)
+
+            setSavedLogos(prev => prev.filter(l => !deletedNames.includes(l.name)))
+            setSelectedSavedLogos([])
+            setShowDeleteConfirm(false)
+
+        } catch (error) {
+            console.error('Delete error:', error)
+            alert('Failed to delete selected logos')
+        } finally {
+            setIsDeleting(false)
+        }
     }
 
     const handleDragOver = useCallback((e) => {
@@ -371,19 +420,66 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
                                     <span className="text-sm text-[var(--color-muted-foreground)]">
                                         {selectedSavedLogos.length} selected
                                     </span>
-                                    <button
-                                        onClick={handleAddSelectedLogos}
-                                        disabled={selectedSavedLogos.length === 0}
-                                        className={cn(
-                                            "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2",
-                                            "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90",
-                                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                                    <div className="flex items-center gap-2">
+                                        {selectedSavedLogos.length > 0 && (
+                                            <button
+                                                onClick={handleDeleteClick}
+                                                className="px-4 py-2 text-sm text-[var(--color-destructive)] hover:bg-[var(--color-destructive)]/10 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Delete
+                                            </button>
                                         )}
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        Add Selected
-                                    </button>
+                                        <button
+                                            onClick={handleAddSelectedLogos}
+                                            disabled={selectedSavedLogos.length === 0}
+                                            className={cn(
+                                                "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2",
+                                                "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90",
+                                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                                            )}
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Add Selected
+                                        </button>
+                                    </div>
                                 </div>
+
+                                {/* Delete Confirmation Modal */}
+                                {showDeleteConfirm && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-10 p-6 animate-in fade-in duration-200">
+                                        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-6 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+                                            <div className="flex items-center gap-3 text-[var(--color-destructive)]">
+                                                <div className="p-2 rounded-full bg-[var(--color-destructive)]/10">
+                                                    <AlertTriangle className="w-6 h-6" />
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-[var(--color-foreground)]">Delete Logos?</h3>
+                                            </div>
+
+                                            <p className="text-sm text-[var(--color-muted-foreground)]">
+                                                Are you sure you want to delete {selectedSavedLogos.length} selected logo{selectedSavedLogos.length !== 1 && 's'}? This action cannot be undone.
+                                            </p>
+
+                                            <div className="flex justify-end gap-3 pt-2">
+                                                <button
+                                                    onClick={() => setShowDeleteConfirm(false)}
+                                                    disabled={isDeleting}
+                                                    className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)]/50 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={confirmDelete}
+                                                    disabled={isDeleting}
+                                                    className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-destructive)] text-white hover:bg-[var(--color-destructive)]/90 transition-colors flex items-center gap-2"
+                                                >
+                                                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -407,7 +503,7 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
                                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             )}
                         >
-                            {isUploading ? 'Uploading...' : isClearing ? 'Please wait...' : 'Generate Logos'}
+                            {isUploading ? `Uploading ${Math.round(uploadProgress || 0)}%...` : isClearing ? 'Please wait...' : 'Generate Logos'}
                         </button>
                     </div>
 

@@ -221,6 +221,51 @@ app.get('/api/saved-logos', async (req, res) => {
         client.close()
     }
 })
+
+// Delete saved logos
+app.delete('/api/saved-logos', async (req, res) => {
+    const { filenames } = req.body
+    if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
+        return res.status(400).json({ error: 'No filenames provided' })
+    }
+
+    const savedDir = process.env.FTP_SAVED_DIR || '/saved'
+    const client = new ftp.Client()
+    client.ftp.verbose = true
+
+    try {
+        await client.access({
+            host: process.env.FTP_HOST,
+            user: process.env.FTP_USER,
+            password: process.env.FTP_PASSWORD,
+            secure: false
+        })
+
+        const results = []
+        for (const filename of filenames) {
+            // Basic sanitization
+            const cleanName = filename.replace(/^.*[\\\/]/, '')
+            const filePath = `${savedDir}/${cleanName}`
+
+            try {
+                await client.remove(filePath)
+                results.push({ name: filename, status: 'deleted' })
+                console.log(`Deleted saved file: ${filePath}`)
+            } catch (err) {
+                console.error(`Failed to delete ${filePath}:`, err)
+                results.push({ name: filename, status: 'error', error: err.message })
+            }
+        }
+
+        res.json({ success: true, results })
+
+    } catch (err) {
+        console.error('Delete saved files error:', err)
+        res.status(500).json({ error: 'Failed to delete saved files' })
+    } finally {
+        client.close()
+    }
+})
 const distPath = path.resolve('dist')
 app.use(express.static(distPath))
 
