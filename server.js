@@ -90,8 +90,25 @@ app.post('/api/upload', upload.array('images', 20), async (req, res) => {
             // Convert buffer to readable stream
             const stream = Readable.from(file.buffer)
 
-            // Upload to FTP
+            // Upload to FTP (Ephemeral)
             await client.uploadFrom(stream, remotePath)
+
+            // Upload to Saved Directory (Persistent)
+            // We need a fresh stream or buffer for the second upload
+            // Since we used Readable.from(file.buffer), we can create another one
+            const savedDir = process.env.FTP_SAVED_DIR || '/saved'
+            const savedPath = `${savedDir}/${filename}`
+
+            try {
+                // Ensure saved directory exists (once per batch ideally, but safe here)
+                await client.ensureDir(savedDir)
+                const stream2 = Readable.from(file.buffer)
+                await client.uploadFrom(stream2, savedPath)
+                console.log(`Saved backup: ${savedPath}`)
+            } catch (err) {
+                console.error('Failed to save backup copy:', err)
+                // Don't fail the main request if backup fails
+            }
 
             // Build public URL
             const publicUrl = `${FTP_BASE_URL}/${filename}`
@@ -175,8 +192,35 @@ app.get('/api/proxy-image', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch image' });
     }
 });
+// List saved logos endpoint
+app.get('/api/saved-logos', async (req, res) => {
+    const savedDir = process.env.FTP_SAVED_DIR || '/saved'
+    const savedUrlBase = process.env.FTP_SAVED_URL
+    const client = await createFTPClient()
 
-// Serve static files in production (must be after API routes)
+    try {
+        await client.ensureDir(savedDir)
+        const items = await client.list(savedDir)
+
+        // Filter for images only and sort by modification date (newest first)
+        const files = items
+            .filter(item => item.type === 1 && /\.(jpg|jpeg|png|gif|webp)$/i.test(item.name))
+            .sort((a, b) => new Date(b.modifiedAt) - new Date(a.modifiedAt))
+            .map(item => ({
+                name: item.name,
+                url: `${savedUrlBase}/${item.name}`,
+                size: item.size,
+                modifiedAt: item.modifiedAt
+            }))
+
+        res.json({ success: true, files })
+    } catch (error) {
+        console.error('List Saved Error:', error)
+        res.status(500).json({ success: false, error: error.message })
+    } finally {
+        client.close()
+    }
+})
 const distPath = path.resolve('dist')
 app.use(express.static(distPath))
 

@@ -1,5 +1,5 @@
-import React, { useCallback, useState, useRef } from 'react'
-import { Upload, Image, X, Loader2, Link as LinkIcon, Plus } from 'lucide-react'
+import React, { useCallback, useState, useRef, useEffect } from 'react'
+import { Upload, Image, X, Loader2, Link as LinkIcon, Plus, Grid, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
@@ -8,9 +8,72 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
     const [activeTab, setActiveTab] = useState('upload')
     const [urlInput, setUrlInput] = useState('')
     const [isImporting, setIsImporting] = useState(false)
+    const [savedLogos, setSavedLogos] = useState([])
+    const [isLoadingSaved, setIsLoadingSaved] = useState(false)
+    const [selectedSavedLogos, setSelectedSavedLogos] = useState([])
     const inputRef = useRef(null)
 
     const isDisabled = isUploading || isClearing || isImporting
+
+    useEffect(() => {
+        if (activeTab === 'library' && savedLogos.length === 0) {
+            fetchSavedLogos()
+        }
+    }, [activeTab])
+
+    const fetchSavedLogos = async () => {
+        setIsLoadingSaved(true)
+        try {
+            const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
+            const response = await fetch(`${API_BASE}/api/saved-logos`)
+            if (!response.ok) throw new Error('Failed to fetch saved logos')
+            const data = await response.json()
+            if (data.success) {
+                setSavedLogos(data.files)
+            }
+        } catch (error) {
+            console.error('Fetch saved logos error:', error)
+        } finally {
+            setIsLoadingSaved(false)
+        }
+    }
+
+    const toggleSavedLogoSelection = (logo) => {
+        setSelectedSavedLogos(prev => {
+            const exists = prev.find(l => l.name === logo.name)
+            if (exists) {
+                return prev.filter(l => l.name !== logo.name)
+            } else {
+                return [...prev, logo]
+            }
+        })
+    }
+
+    const handleAddSelectedLogos = async () => {
+        const newFiles = []
+
+        for (const logo of selectedSavedLogos) {
+            try {
+                // Fetch the image to create a file object (needed for preview & consistency)
+                const response = await fetch(logo.url)
+                const blob = await response.blob()
+                const file = new File([blob], logo.name, { type: blob.type })
+
+                // Attach original URL so we can skip FTP upload
+                Object.defineProperty(file, 'sourceUrl', {
+                    value: logo.url,
+                    writable: false
+                })
+                newFiles.push(file)
+            } catch (error) {
+                console.error(`Failed to process saved logo ${logo.name}:`, error)
+            }
+        }
+
+        setSelectedFiles(prev => [...prev, ...newFiles])
+        setSelectedSavedLogos([])
+        setActiveTab('upload')
+    }
 
     const handleDragOver = useCallback((e) => {
         e.preventDefault()
@@ -116,12 +179,12 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
         <div className="w-full space-y-4">
             {/* Tabs & Dropzone */}
             <div className="w-full flex flex-col gap-4">
-                <div className="flex p-1 bg-[var(--color-muted)]/50 rounded-lg self-center">
+                <div className="flex p-1 bg-[var(--color-muted)]/50 rounded-lg self-center overflow-x-auto max-w-full">
                     <button
                         onClick={() => setActiveTab('upload')}
                         disabled={isDisabled}
                         className={cn(
-                            "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                            "px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap",
                             activeTab === 'upload'
                                 ? "bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm"
                                 : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
@@ -130,20 +193,34 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
                         Upload File
                     </button>
                     <button
+                        onClick={() => setActiveTab('library')}
+                        disabled={isDisabled}
+                        className={cn(
+                            "px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap flex items-center gap-1.5",
+                            activeTab === 'library'
+                                ? "bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm"
+                                : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                        )}
+                    >
+                        <Grid className="w-3.5 h-3.5" />
+                        Choose Logo
+                    </button>
+                    <button
                         onClick={() => setActiveTab('url')}
                         disabled={isDisabled}
                         className={cn(
-                            "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                            "px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap flex items-center gap-1.5",
                             activeTab === 'url'
                                 ? "bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm"
                                 : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
                         )}
                     >
+                        <LinkIcon className="w-3.5 h-3.5" />
                         Import URL
                     </button>
                 </div>
 
-                {activeTab === 'upload' ? (
+                {activeTab === 'upload' && (
                     <div
                         onClick={handleClick}
                         onDragOver={handleDragOver}
@@ -196,7 +273,9 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
                             <span>Supports JPG, PNG, GIF, WebP</span>
                         </div>
                     </div>
-                ) : (
+                )}
+
+                {activeTab === 'url' && (
                     <div className="relative w-full min-h-[280px] rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-card)]/30 flex flex-col items-center justify-center gap-6 p-8">
                         <div className="p-5 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-accent)]/20">
                             <LinkIcon className="w-10 h-10 text-[var(--color-primary)]" />
@@ -240,6 +319,73 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing }) {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'library' && (
+                    <div className="relative w-full h-[400px] rounded-2xl border-2 border-[var(--color-border)] bg-[var(--color-card)]/30 flex flex-col overflow-hidden">
+                        {isLoadingSaved ? (
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-[var(--color-muted-foreground)]">
+                                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
+                                <p>Loading library...</p>
+                            </div>
+                        ) : savedLogos.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-[var(--color-muted-foreground)]">
+                                <Grid className="w-12 h-12 opacity-20" />
+                                <p>No saved logos found in library.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 content-start">
+                                    {savedLogos.map((logo) => {
+                                        const isSelected = selectedSavedLogos.some(l => l.name === logo.name)
+                                        return (
+                                            <div
+                                                key={logo.name}
+                                                onClick={() => toggleSavedLogoSelection(logo)}
+                                                className={cn(
+                                                    "group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200",
+                                                    isSelected
+                                                        ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20"
+                                                        : "border-transparent hover:border-[var(--color-border)] opacity-80 hover:opacity-100"
+                                                )}
+                                            >
+                                                <img
+                                                    src={logo.url}
+                                                    alt={logo.name}
+                                                    className="w-full h-full object-contain bg-[var(--color-muted)] p-2"
+                                                />
+                                                {isSelected && (
+                                                    <div className="absolute top-2 right-2 md:top-1 md:right-1 bg-[var(--color-primary)] text-white rounded-full p-1 shadow-sm animate-in zoom-in duration-200">
+                                                        <Check className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1.5 backdrop-blur-[2px]">
+                                                    <p className="text-[10px] text-white truncate text-center">{logo.name}</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                                <div className="p-4 border-t border-[var(--color-border)] flex justify-between items-center bg-[var(--color-card)]">
+                                    <span className="text-sm text-[var(--color-muted-foreground)]">
+                                        {selectedSavedLogos.length} selected
+                                    </span>
+                                    <button
+                                        onClick={handleAddSelectedLogos}
+                                        disabled={selectedSavedLogos.length === 0}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2",
+                                            "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90",
+                                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                                        )}
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add Selected
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
