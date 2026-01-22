@@ -237,7 +237,7 @@ app.delete('/api/saved-logos', async (req, res) => {
         await client.access({
             host: process.env.FTP_HOST,
             user: process.env.FTP_USER,
-            password: process.env.FTP_PASSWORD,
+            password: process.env.FTP_PASS, // Fixed: match the env var used in config
             secure: false
         })
 
@@ -274,7 +274,7 @@ app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'))
 })
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 FTP Upload Server running on http://localhost:${PORT}`)
     console.log(`📁 FTP Host: ${process.env.FTP_HOST}`)
     console.log(`📂 Upload Path: ${FTP_PATH}`)
