@@ -22,21 +22,21 @@ export function LogoResultRow({ filename, logoVersions, isLoading, error }) {
         <>
             <div
                 className={cn(
-                    "glass-card p-6 animate-fade-in-up",
+                    "glass-card p-4 sm:p-5 md:p-6 animate-fade-in-up",
                     "border border-[var(--color-border)] hover:border-[var(--color-primary)]/30",
                     "transition-all duration-300"
                 )}
             >
                 {/* Header with filename */}
-                <div className="flex items-center gap-3 mb-5">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-accent)]/20">
-                        <Image className="w-5 h-5 text-[var(--color-primary)]" />
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-5">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-accent)]/20">
+                        <Image className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary)]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-[var(--color-foreground)] truncate">
+                        <h3 className="text-sm sm:text-base font-semibold text-[var(--color-foreground)] truncate">
                             {filename}
                         </h3>
-                        <p className="text-xs text-[var(--color-muted-foreground)]">
+                        <p className="text-[10px] sm:text-xs text-[var(--color-muted-foreground)]">
                             {isLoading ? 'Generating logo versions...' : error ? 'Generation failed' : `${logoVersions?.length || 0} versions generated`}
                         </p>
                     </div>
@@ -50,7 +50,7 @@ export function LogoResultRow({ filename, logoVersions, isLoading, error }) {
                 </div>
 
                 {/* Logo versions grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
                     {isLoading ? (
                         // Loading skeletons
                         [...Array(4)].map((_, i) => (

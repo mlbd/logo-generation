@@ -104,16 +104,16 @@ function App() {
 
     return (
         <div className="min-h-screen gradient-bg">
-            <div className="relative z-10 min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
+            <div className="relative z-10 min-h-screen py-6 px-3 sm:py-8 sm:px-4 lg:py-12 lg:px-8 flex flex-col items-center">
                 <div className="max-w-6xl w-full space-y-10 text-center">
                     {/* Header */}
-                    <header className="text-center space-y-4 animate-fade-in-up">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20">
-                            <Code2 className="w-4 h-4 text-[var(--color-primary)]" />
-                            <span className="text-sm font-medium text-[var(--color-primary)]">Python Powered Logo Generation</span>
+                    <header className="text-center space-y-3 sm:space-y-4 animate-fade-in-up">
+                        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20">
+                            <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--color-primary)]" />
+                            <span className="text-xs sm:text-sm font-medium text-[var(--color-primary)]">Python Powered Logo Generation</span>
                         </div>
 
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold">
                             <span className="bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
                                 Smart Logo
                             </span>
@@ -123,15 +123,15 @@ function App() {
                             </span>
                         </h1>
 
-                        <p className="text-lg text-[var(--color-muted-foreground)] mt-5">
-                            Upload your images and instantly generate 4 unique logo variations. <br />
-                            <span className="text-sm opacity-75">(Original, Original White, B&W Black, B&W White)</span> <br />
-                            Powered by Python & Automation technology.
+                        <p className="text-base sm:text-lg text-[var(--color-muted-foreground)] mt-3 sm:mt-5 px-2">
+                            Upload your images and instantly generate 4 unique logo variations. <br className="hidden sm:inline" />
+                            <span className="text-xs sm:text-sm opacity-75 block sm:inline mt-1 sm:mt-0">(Original, Original White, B&W Black, B&W White)</span> <br className="hidden sm:inline" />
+                            <span className="block sm:inline mt-1 sm:mt-0">Powered by Python & Automation technology.</span>
                         </p>
                     </header>
 
                     {/* Upload Section */}
-                    <section className="p-6 sm:p-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                    <section className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
 
                         <ImageDropzone
                             onFilesSelected={handleFilesSelected}
@@ -154,20 +154,20 @@ function App() {
 
                     {/* Results Section */}
                     {processingFiles.length > 0 && (
-                        <section className="space-y-6">
-                            <div className="flex flex-col items-center gap-2">
-                                <h2 className="text-2xl font-bold text-[var(--color-foreground)]">
+                        <section className="space-y-4 sm:space-y-6">
+                            <div className="flex flex-col items-center gap-2 sm:gap-3">
+                                <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-foreground)]">
                                     Generated Logos
                                 </h2>
-                                <div className="flex items-center gap-4">
-                                    <span className="text-sm text-[var(--color-muted-foreground)]">
+                                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                                    <span className="text-xs sm:text-sm text-[var(--color-muted-foreground)]">
                                         {processingFiles.filter(f => !f.isLoading).length} / {processingFiles.length} completed
                                     </span>
                                     <button
                                         onClick={handleReset}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-destructive)]/10 hover:bg-[var(--color-destructive)]/20 text-[var(--color-destructive)] text-sm font-medium transition-colors cursor-pointer"
+                                        className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[var(--color-destructive)]/10 hover:bg-[var(--color-destructive)]/20 text-[var(--color-destructive)] text-xs sm:text-sm font-medium transition-colors cursor-pointer"
                                     >
-                                        <RotateCcw className="w-4 h-4" />
+                                        <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         Reset All
                                     </button>
                                 </div>
@@ -189,7 +189,7 @@ function App() {
                 </div>
 
                 {/* Footer */}
-                <footer className="mt-16 text-center text-sm text-[var(--color-muted-foreground)]">
+                <footer className="mt-8 sm:mt-12 lg:mt-16 text-center text-xs sm:text-sm text-[var(--color-muted-foreground)]">
                     <p>Created by Sabbir Ahmed & Mohammad Limon</p>
                 </footer>
             </div>
