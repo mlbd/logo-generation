@@ -1,4 +1,4 @@
-const N8N_WEBHOOK_URL = 'https://n8n.limon.dev/webhook/smart-generation'
+const N8N_WEBHOOK_URL = 'https://n8n.limon.dev/webhook/final-variant'
 
 // Version label mapping
 const VERSION_LABELS = {
@@ -63,23 +63,24 @@ export async function generateLogoVersions(imageUrl) {
 }
 
 export async function generateAllLogoVersions(imageUrls, onResult) {
-    // Send all requests in parallel
-    const promises = imageUrls.map(async (item) => {
+    // Process requests sequentially (one by one) to avoid "too many FTP requests" error
+    const results = []
+
+    for (const item of imageUrls) {
         try {
             const result = await generateLogoVersions(item.url)
 
-            // Call the callback with each result as it completes
-            if (onResult) {
-                onResult({
-                    filename: item.filename,
-                    ...result
-                })
-            }
-
-            return {
+            const itemResult = {
                 filename: item.filename,
                 ...result
             }
+
+            // Call the callback with each result as it completes
+            if (onResult) {
+                onResult(itemResult)
+            }
+
+            results.push(itemResult)
         } catch (error) {
             const errorResult = {
                 filename: item.filename,
@@ -91,10 +92,9 @@ export async function generateAllLogoVersions(imageUrls, onResult) {
                 onResult(errorResult)
             }
 
-            return errorResult
+            results.push(errorResult)
         }
-    })
+    }
 
-    // Wait for all to complete
-    return Promise.all(promises)
+    return results
 }

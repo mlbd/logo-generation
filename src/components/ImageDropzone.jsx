@@ -13,6 +13,7 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing, upload
     const [selectedSavedLogos, setSelectedSavedLogos] = useState([])
     const [isDeleting, setIsDeleting] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [isAddingLogos, setIsAddingLogos] = useState(false)
     const inputRef = useRef(null)
 
     const isDisabled = isUploading || isClearing || isImporting
@@ -52,34 +53,39 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing, upload
     }
 
     const handleAddSelectedLogos = async () => {
+        setIsAddingLogos(true)
         const newFiles = []
 
-        for (const logo of selectedSavedLogos) {
-            try {
-                // Use proxy to fetch image to avoid CORS issues
-                const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
-                const proxyUrl = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(logo.url)}`
+        try {
+            for (const logo of selectedSavedLogos) {
+                try {
+                    // Use proxy to fetch image to avoid CORS issues
+                    const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
+                    const proxyUrl = `${API_BASE}/api/proxy-image?url=${encodeURIComponent(logo.url)}`
 
-                const response = await fetch(proxyUrl)
-                if (!response.ok) throw new Error('Failed to fetch image via proxy')
+                    const response = await fetch(proxyUrl)
+                    if (!response.ok) throw new Error('Failed to fetch image via proxy')
 
-                const blob = await response.blob()
-                const file = new File([blob], logo.name, { type: blob.type })
+                    const blob = await response.blob()
+                    const file = new File([blob], logo.name, { type: blob.type })
 
-                // Attach original URL so we can skip FTP upload
-                Object.defineProperty(file, 'sourceUrl', {
-                    value: logo.url,
-                    writable: false
-                })
-                newFiles.push(file)
-            } catch (error) {
-                console.error(`Failed to process saved logo ${logo.name}:`, error)
+                    // Attach original URL so we can skip FTP upload
+                    Object.defineProperty(file, 'sourceUrl', {
+                        value: logo.url,
+                        writable: false
+                    })
+                    newFiles.push(file)
+                } catch (error) {
+                    console.error(`Failed to process saved logo ${logo.name}:`, error)
+                }
             }
-        }
 
-        setSelectedFiles(prev => [...prev, ...newFiles])
-        setSelectedSavedLogos([])
-        setActiveTab('upload')
+            setSelectedFiles(prev => [...prev, ...newFiles])
+            setSelectedSavedLogos([])
+            setActiveTab('upload')
+        } finally {
+            setIsAddingLogos(false)
+        }
     }
 
     const handleDeleteClick = () => {
@@ -398,12 +404,16 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing, upload
                                         return (
                                             <div
                                                 key={logo.name}
-                                                onClick={() => toggleSavedLogoSelection(logo)}
+                                                onClick={() => !isAddingLogos && toggleSavedLogoSelection(logo)}
                                                 className={cn(
-                                                    "group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200",
+                                                    "group relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200",
+                                                    isAddingLogos
+                                                        ? "cursor-not-allowed opacity-50"
+                                                        : "cursor-pointer",
                                                     isSelected
                                                         ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20"
-                                                        : "border-transparent hover:border-[var(--color-border)] opacity-80 hover:opacity-100"
+                                                        : "border-transparent hover:border-[var(--color-border)] opacity-80 hover:opacity-100",
+                                                    isAddingLogos && "!opacity-50"
                                                 )}
                                             >
                                                 <img
@@ -439,16 +449,20 @@ export function ImageDropzone({ onFilesSelected, isUploading, isClearing, upload
                                         )}
                                         <button
                                             onClick={handleAddSelectedLogos}
-                                            disabled={selectedSavedLogos.length === 0}
+                                            disabled={selectedSavedLogos.length === 0 || isAddingLogos}
                                             className={cn(
                                                 "px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-4 rounded-lg font-medium transition-all duration-200 flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm",
                                                 "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90",
                                                 "disabled:opacity-50 disabled:cursor-not-allowed"
                                             )}
                                         >
-                                            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                            <span className="hidden sm:inline">Add Selected</span>
-                                            <span className="sm:hidden">Add</span>
+                                            {isAddingLogos ? (
+                                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                                            ) : (
+                                                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                            )}
+                                            <span className="hidden sm:inline">{isAddingLogos ? 'Adding...' : 'Add Selected'}</span>
+                                            <span className="sm:hidden">{isAddingLogos ? 'Adding...' : 'Add'}</span>
                                         </button>
                                     </div>
                                 </div>
